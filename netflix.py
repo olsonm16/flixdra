@@ -15,12 +15,12 @@ def parse_netflix(file_name):
 
 	name = tree.find_class("name")[0].text_content()
 
-	n = 10
+	#n = 10
 
-	#for elem in lyst:
-	for i in range(n):
-		#x = elem.text_content().encode('utf-8').strip()
-		x = lyst[i].text_content().encode('utf-8').strip()
+	for elem in lyst:
+	#for i in range(n):
+		x = elem.text_content().encode('utf-8').strip()
+		#x = lyst[i].text_content().encode('utf-8').strip()
 		y = x.split("Report")[0]
 		z = y.split("/")
 
