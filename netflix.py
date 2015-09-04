@@ -1,6 +1,8 @@
 from lxml import html
 import datetime
 import requests
+from netflix_models import NetflixContent, NetflixDay
+from plot_netflix import plot_history
 
 def parse_netflix(file_name):
 
@@ -11,8 +13,14 @@ def parse_netflix(file_name):
 	history = {}
 	format = '%m/%d/%Y'
 
-	for elem in lyst:
-		x = elem.text_content().encode('utf-8').strip()
+	name = tree.find_class("name")[0].text_content()
+
+	n = 10
+
+	#for elem in lyst:
+	for i in range(n):
+		#x = elem.text_content().encode('utf-8').strip()
+		x = lyst[i].text_content().encode('utf-8').strip()
 		y = x.split("Report")[0]
 		z = y.split("/")
 
@@ -24,11 +32,14 @@ def parse_netflix(file_name):
 		if "Season" in title:
 			terms = title.split(":")
 			show_name = terms[0]
-			episode = terms[2].replace('"', "").replace(" ", "").replace("\\", "")
+			episode = terms[2].replace('"', "").replace("\\", "")
+
+			this_content = NetflixContent(episode, "tvEpisode", 0, show_name)
 			request = 'https://itunes.apple.com/search?term=' + episode + '&artistName=' + show_name + '&entity=tvEpisode'
 
 		else:
 			show_name = title.replace("\\", "")
+			this_content = NetflixContent(show_name, "movie", 0)
 			request = 'https://itunes.apple.com/search?term=' + title + '&entity=movie'
 
 		r = requests.get(request)
@@ -38,13 +49,14 @@ def parse_netflix(file_name):
 			for result in r.json()['results']:
 				if result['artistName'] == show_name:
 					content_length += round(float(r.json()['results'][0]['trackTimeMillis'])/60000, 0)
+					this_content.update_length(content_length)
 					break
 		except:
 			content_length = 0
 
 		if content_length == 0:
 
-			wiki_req = "https://en.wikipedia.org/wiki/" + show_name.replace (" ", "_")
+			wiki_req = "https://en.wikipedia.org/wiki/" + show_name.replace(" ", "_")
 
 			page = requests.get(wiki_req)
 			if page.status_code == 200:
@@ -52,9 +64,19 @@ def parse_netflix(file_name):
 				try:
 					info = tree.find_class('infobox vevent')[0]
 					for elem in info:
-						if "Running time" in elem.text_content():
-							time = elem.text_content().encode('utf-8')
-							content_length += float(time.split("\n")[2][0:2])
+						if "Running time" in elem.text_content().encode('utf-8').strip():
+							array = elem.text_content().split("\n")
+							for elem in array:
+								if "minutes" in elem:
+									x = str(elem.encode('utf-8').strip()).split("\xe2\x80\x93")
+									if len(x) > 1:
+										lower = float(x[0])
+										upper = float(x[1].split("minutes")[0])
+										content_length = (upper + lower) / 2
+										this_content.update_length(content_length)
+									else:
+										content_length = float(elem.split(" ")[0])
+										this_content.update_length(content_length)
 				except:
 					content_length += 0
 
@@ -63,9 +85,23 @@ def parse_netflix(file_name):
 		date = datetime.datetime.strptime(date_string, format)
 
 		if date not in history:
-			history[date] = []
-			history[date].append([title.replace("\\", ""), content_length])
+			history[date] = NetflixDay(date)
+			history[date].add_content(this_content)
+			history[date].update_mins(content_length)
 		else:
-			history[date].append([title.replace("\\", ""), content_length])
+			history[date].add_content(this_content)
+			history[date].update_mins(content_length)
 
-	return history
+	for date in history.keys():
+		print(history[date])
+		print(history[date].most_freq_content())
+
+	return plot_history(history, name)
+
+	#return history
+
+
+
+
+
+
