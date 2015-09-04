@@ -28,7 +28,7 @@ def parse_netflix(file_name):
 			request = 'https://itunes.apple.com/search?term=' + episode + '&artistName=' + show_name + '&entity=tvEpisode'
 
 		else:
-			show_name = title
+			show_name = title.replace("\\", "")
 			request = 'https://itunes.apple.com/search?term=' + title + '&entity=movie'
 
 		r = requests.get(request)
